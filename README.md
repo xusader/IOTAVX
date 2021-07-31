@@ -1,3 +1,3 @@
 # IOTAVX
 
-FHEM module for serial port remote control IOTAVX-VX1
+FHEM module for serial port remote control IOTAVX-AVX1
