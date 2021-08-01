@@ -25,7 +25,8 @@ my %IOTAVX_set = (
             "BT"        => q('@15H'),
            },
 "mode" => {
-           "STEREO"     => q('@11E'),
+	   "STEREO" => q('@11E'),
+	   "DIRECT" => q('@13J'),    
 	  }, 
 "mute" => {
 	"on"	    => q('@11Q'),
@@ -38,7 +39,7 @@ my %IOTAVX_set = (
 "volume" => {
         "up"        => q('@11S'),
         "down"      => q('@11T'),
-        "direct"    => q('@11P'+10),
+        "direct"    => q('@11P'),
        }
 );
 
