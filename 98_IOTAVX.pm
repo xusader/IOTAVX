@@ -9,6 +9,39 @@ use warnings;
 use DevIo; # load DevIo.pm if not already loaded
 use Time::HiRes qw(gettimeofday);
 
+my %IOTAVX_set = (
+"input" => {
+            "TV(ARC)"   => q('@11B'),
+            "HDMI1"     => q('@116'),
+            "HDMI2"     => q('@115'),
+            "HDMI3"     => q('@15A'),
+            "HDMI4"     => q('@15B'),
+            "HDMI5"     => q('@15C'),
+	    "HDMI6"     => q('@11D'),
+            "COAX"      => q('@117'),
+            "OPTICAL"   => q('@15E'),
+            "ANALOG1"   => q('@15F'),
+            "ANALOG2"   => q('@15G'),
+            "BT"        => q('@15H'),
+           },
+"mode" => {
+           "STEREO"     => q('@11E'),
+	  }, 
+"mute" => {
+	"on"	    => q('@11Q'),
+        "off"	    => q('@11R'),
+	  },
+"power" => {
+        "on"        => q('@112'),
+        "off"       => q('@113'),
+       },
+"volume" => {
+        "up"        => q('@11S'),
+        "down"      => q('@11T'),
+        "direct"    => q('@11P'+10),
+       }
+);
+
 # called upon loading the module IOTAVX
 sub IOTAVX_Initialize($)
 {
@@ -99,53 +132,29 @@ sub IOTAVX_Read($)
 # called if set command is executed
 sub IOTAVX_Set($$@)
 {
-    my ($hash, $name, $cmd) = @_;
+     my ($hash, @a) = @_;
 
-    my $usage = "unknown argument $cmd, choose one of statusRequest:noArg off:noArg on:noArg muteOff:noArg muteOn:noArg volumeUp:noArg volumeDown:noArg volume_pct:slider,-80,1,0";
+    my $what = $a[1];
+    my $usage = "Unknown argument $what, choose one of statusRequest";
 
-    if($cmd eq "statusRequest")
+    foreach my $cmd (sort keys %IOTAVX_set)
     {
-         DevIo_SimpleWrite($hash, "get_status\r\n", 2);
+       $usage .= " $cmd:".join(",", sort keys %{$IOTAVX_set{$cmd}});
     }
-    elsif($cmd eq "on")
+
+    if($what eq "statusRequest")
     {
-         my $id = q('@112');
-         DevIo_SimpleWrite($hash, qq($id), 2);
+        IOTAVX_GetStatus($hash, 1);
     }
-    elsif($cmd eq "off")
+    elsif(exists($IOTAVX_set{$what}) and exists($IOTAVX_set{$what}{$a[2]}))
     {
-         my $id = q('@113');
-         DevIo_SimpleWrite($hash, qq($id), 2);
-    }
-    elsif($cmd eq "muteOn")
-    {
-         my $id = q('@11Q');
-         DevIo_SimpleWrite($hash, qq($id), 2);
-    }
-    elsif($cmd eq "muteOff")
-    {
-         my $id = q('@11R');
-         DevIo_SimpleWrite($hash, qq($id), 2);
-    }
-    elsif($cmd eq "volumeUp")
-    {
-         my $id = q('@11S');
-	 DevIo_SimpleWrite($hash, qq($id), 2);
-    }
-    elsif($cmd eq "volumeDown")
-    {
-         my $id = q('@11T');
-         DevIo_SimpleWrite($hash, qq($id), 2);
-    }
-    elsif($cmd eq "volume_pct")
-    {
-         my $id = q('@11P');
-         DevIo_SimpleWrite($hash, qq($id), 2);
+        DevIo_SimpleWrite($hash, $IOTAVX_set{$what}{$a[2]}."\n", 0);
     }
     else
     {
-        return $usage;
+      return $usage;
     }
+
 }
     
 # will be executed upon successful connection establishment (see DevIo_OpenDev())
