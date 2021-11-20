@@ -6,10 +6,11 @@ package main;
 
 use strict;
 use warnings;
-use DevIo; # load DevIo.pm if not already loaded
+use DevIo; 
 use Time::HiRes qw(gettimeofday);
 
 my %IOTAVX_set = (
+
 "input" => {
             "TV(ARC)"   => q('@11B'),
             "HDMI1"     => q('@116'),
@@ -40,7 +41,7 @@ my %IOTAVX_set = (
         "up"        => q('@11S'),
         "down"      => q('@11T'),
         "direct"    => q('@11P'),
-       }
+       },
 );
 
 # called upon loading the module IOTAVX
@@ -52,11 +53,11 @@ sub IOTAVX_Initialize($)
 		
   require "$attr{global}{modpath}/FHEM/DevIo.pm";
   
-  $hash->{DefFn}    = "IOTAVX_Define";
-  $hash->{UndefFn}  = "IOTAVX_Undef";
-  $hash->{SetFn}    = "IOTAVX_Set";
-  $hash->{ReadFn}   = "IOTAVX_Read";
-  $hash->{ReadyFn}  = "IOTAVX_Ready";
+  $hash->{DefFn}     = "IOTAVX_Define";
+  $hash->{UndefFn}   = "IOTAVX_Undef";
+  $hash->{SetFn}     = "IOTAVX_Set";
+  $hash->{ReadFn}    = "IOTAVX_Read";
+  $hash->{ReadyFn}   = "IOTAVX_Ready";
 }
 
 # called when a new definition is created (by hand or from configuration read on FHEM startup)
@@ -85,7 +86,14 @@ sub IOTAVX_Define($$)
   
   # open connection with custom init function
   my $ret = DevIo_OpenDev($hash, 0, "IOTAVX_Init"); 
- 
+
+  unless ( exists( $attr{$name}{devStateIcon} ) ) {
+                   $attr{$name}{devStateIcon} = 'opened:10px-kreis-gruen:disconnected disconnected:10px-kreis-rot:opened';
+          }
+  unless (exists($attr{$name}{webCmd})){
+                  $attr{$name}{webCmd} = 'power:mute:volume:input:mode:statusRequest';
+          }
+
   return undef;
 }
 
@@ -122,12 +130,13 @@ sub IOTAVX_Read($)
   # stop processing if no data is available (device disconnected)
   return if(!defined($buf));
   
-  Log3 $name, 5, "IOTAVX ($name) - received: $buf"; 
-  
+  Log1 $name, 5, "IOTAVX ($name) - received: $buf";
   #
   # do something with $buf, e.g. generate readings, send answers via DevIo_SimpleWrite(), ...
   #
-   
+  # Daten in Hex konvertieren und an den Puffer anhängen
+  $hash->{helper}{BUFFER} .= unpack ('H*', $buf);	
+  Log1 $name, 5, "IOTAVX ($name) - current buffer content: ".$hash->{helper}{BUFFER};
 }
 
 # called if set command is executed
@@ -137,6 +146,7 @@ sub IOTAVX_Set($$@)
 
     my $what = $a[1];
     my $usage = "Unknown argument $what, choose one of statusRequest";
+    my $statReq = q('@12S');
 
     foreach my $cmd (sort keys %IOTAVX_set)
     {
@@ -145,7 +155,7 @@ sub IOTAVX_Set($$@)
 
     if($what eq "statusRequest")
     {
-        IOTAVX_GetStatus($hash, 1);
+	    ######################	
     }
     elsif(exists($IOTAVX_set{$what}) and exists($IOTAVX_set{$what}{$a[2]}))
     {
@@ -155,9 +165,8 @@ sub IOTAVX_Set($$@)
     {
       return $usage;
     }
-
 }
-    
+
 # will be executed upon successful connection establishment (see DevIo_OpenDev())
 sub IOTAVX_Init($)
 {
@@ -165,7 +174,7 @@ sub IOTAVX_Init($)
 
     # send a status request to the device
     DevIo_SimpleWrite($hash, "get_status\r\n", 2);
-    
+
     return undef; 
 }
 
