@@ -88,7 +88,7 @@ sub IOTAVX_Define($$)
   my $ret = DevIo_OpenDev($hash, 0, "IOTAVX_Init"); 
 
   unless ( exists( $attr{$name}{devStateIcon} ) ) {
-                   $attr{$name}{devStateIcon} = 'opened:10px-kreis-gruen:disconnected disconnected:10px-kreis-rot:opened';
+                   $attr{$name}{devStateIcon} = 'on:10px-kreis-gruen:disconnected disconnected:10px-kreis-rot:on';
           }
   unless (exists($attr{$name}{webCmd})){
                   $attr{$name}{webCmd} = 'power:mute:volume:input:mode:statusRequest';
@@ -124,25 +124,36 @@ sub IOTAVX_Read($)
   my ($hash) = @_;
   my $name = $hash->{NAME};
   
-  # read the available data
-  my $buf = DevIo_SimpleRead($hash);
-  
-  # stop processing if no data is available (device disconnected)
-  return if(!defined($buf));
-  
-  Log1 $name, 5, "IOTAVX ($name) - received: $buf";
-  #
-  # do something with $buf, e.g. generate readings, send answers via DevIo_SimpleWrite(), ...
-  #
-  # Daten in Hex konvertieren und an den Puffer anhängen
-  $hash->{helper}{BUFFER} .= unpack ('H*', $buf);	
-  Log1 $name, 5, "IOTAVX ($name) - current buffer content: ".$hash->{helper}{BUFFER};
+  my $data = DevIo_SimpleRead($hash);
+  return if(!defined($data)); # connection lost
+ 
+  my $buffer = $hash->{PARTIAL};
+   
+  # concat received data to $buffer
+  $buffer .= $data;
+
+  # as long as the buffer contains newlines (complete datagramm)
+  while($buffer =~ '\*')
+  {
+    my $msg;
+    
+    # extract the complete message ($msg), everything else is assigned to $buffer
+    ($msg, $buffer) = split("\n", $buffer, 2);
+    
+    # remove trailing whitespaces
+    chomp $msg;
+      
+    # parse the extracted message
+    IOTAVX_Parse($hash, $msg);
+  }
+  # update $hash->{PARTIAL} with the current buffer content
+  $hash->{PARTIAL} = $buffer; 
 }
 
 # called if set command is executed
 sub IOTAVX_Set($$@)
 {
-     my ($hash, @a) = @_;
+    my ($hash, @a) = @_;
 
     my $what = $a[1];
     my $usage = "Unknown argument $what, choose one of statusRequest";
@@ -155,7 +166,7 @@ sub IOTAVX_Set($$@)
 
     if($what eq "statusRequest")
     {
-	    ######################	
+       DevIo_SimpleWrite($hash, $statReq, 2);	  	
     }
     elsif(exists($IOTAVX_set{$what}) and exists($IOTAVX_set{$what}{$a[2]}))
     {
@@ -176,6 +187,34 @@ sub IOTAVX_Init($)
     DevIo_SimpleWrite($hash, "get_status\r\n", 2);
 
     return undef; 
+}
+
+sub IOTAVX_Parse (@)
+{
+
+  my ($hash, $msg) = @_;
+  my $name = $hash->{NAME};
+
+  if ($msg =~/DIM/) {
+    readingsSingleUpdate($hash, "state", "on", 1);
+  } 
+
+  if ($msg =~/13J/) {   	  
+    readingsSingleUpdate($hash, "mode", "direct", 1); 
+  }
+
+  if ($msg =~/11E/) {
+    readingsSingleUpdate($hash, "mode", "stereo", 1);
+  }
+
+  if ($msg =~/11Q/) {
+    readingsSingleUpdate($hash, "mute", "on", 1);
+  }
+
+  if ($msg =~/11R/) {
+    readingsSingleUpdate($hash, "mute", "off", 1);
+  }
+
 }
 
 1;
