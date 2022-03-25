@@ -33,15 +33,6 @@ my %IOTAVX_set = (
 	"on"	    => q('@11Q'),
         "off"	    => q('@11R'),
 	  },
-"power" => {
-        "on"        => q('@112'),
-        "off"       => q('@113'),
-       },
-"volume" => {
-        "up"        => q('@11S'),
-        "down"      => q('@11T'),
-        "direct"    => q('@11P'),
-       },
 );
 
 # called upon loading the module IOTAVX
@@ -91,7 +82,7 @@ sub IOTAVX_Define($$)
                    $attr{$name}{devStateIcon} = 'on:10px-kreis-gruen:disconnected disconnected:10px-kreis-rot:on';
           }
   unless (exists($attr{$name}{webCmd})){
-                  $attr{$name}{webCmd} = 'power:mute:volume:input:mode:statusRequest';
+                  $attr{$name}{webCmd} = 'on:off:mute:volume:volumeUp:volumeDown:input:mode:statusRequest';
           }
 
   return undef;
@@ -156,18 +147,45 @@ sub IOTAVX_Set($$@)
     my ($hash, @a) = @_;
 
     my $what = $a[1];
-    my $usage = "Unknown argument $what, choose one of statusRequest";
-    my $statReq = q('@12S');
+    my $usage = "Unknown argument $what, choose one of statusRequest volume:slider,0,5,80";
 
     foreach my $cmd (sort keys %IOTAVX_set)
     {
        $usage .= " $cmd:".join(",", sort keys %{$IOTAVX_set{$cmd}});
     }
-
     if($what eq "statusRequest")
     {
-       DevIo_SimpleWrite($hash, $statReq, 2);	  	
+       my $cmd = q('@12S');
+       DevIo_SimpleWrite($hash, $cmd, 2);	  	
     }
+    elsif ($what eq "on")
+    {
+       my $cmd = q('@112');
+       DevIo_SimpleWrite($hash, $cmd, 2);
+    }
+    elsif ($what eq "off")
+    {
+       my $cmd = q('@113');
+       DevIo_SimpleWrite($hash, $cmd, 2);
+    }
+    elsif ($what eq "volumeDown")
+    {
+       my $cmd = q('@11T');
+       DevIo_SimpleWrite($hash, $cmd, 2);
+    }
+    elsif ($what eq "volumeUp")
+    {
+       my $cmd = q('@11S');
+       DevIo_SimpleWrite($hash, $cmd, 2);
+    }
+    elsif ($what eq "volume")
+    {
+       my $volume = $a[2];
+       my $vol = $volume * 10;
+       my $strg1 = q('@11P);
+       my $strg2 = q(');
+       DevIo_SimpleWrite($hash, $strg1.$vol.$strg2, 2);
+    }    
     elsif(exists($IOTAVX_set{$what}) and exists($IOTAVX_set{$what}{$a[2]}))
     {
         DevIo_SimpleWrite($hash, $IOTAVX_set{$what}{$a[2]}."\n", 0);
@@ -200,11 +218,11 @@ sub IOTAVX_Parse (@)
   } 
 
   if ($msg =~/13J/) {   	  
-    readingsSingleUpdate($hash, "mode", "direct", 1); 
+    readingsSingleUpdate($hash, "mode", "DIRECT", 1); 
   }
 
   if ($msg =~/11E/) {
-    readingsSingleUpdate($hash, "mode", "stereo", 1);
+    readingsSingleUpdate($hash, "mode", "STEREO", 1);
   }
 
   if ($msg =~/11Q/) {
