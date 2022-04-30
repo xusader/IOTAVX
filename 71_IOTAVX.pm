@@ -147,7 +147,7 @@ sub IOTAVX_Read($)
 
     # parse the extracted message
     IOTAVX_Parse($hash, $msg);
-    Log3 $name, 5, "$name - msg: $msg";
+    #Log3 $name, 5, "$name - msg: $msg";
   }
   # update $hash->{PARTIAL} with the current buffer content
   $hash->{PARTIAL} = $buffer; 
