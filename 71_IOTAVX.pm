@@ -115,24 +115,32 @@ sub IOTAVX_Read($)
   my $name = $hash->{NAME};
   
   my $data = DevIo_SimpleRead($hash);
-  return if(!defined($data)); # connection lost
- 
+  return if(!defined($data)); # connection lost 
+
   my $buffer = $hash->{PARTIAL};
    
   # concat received data to $buffer
   $buffer .= $data;
-
+ 
   # as long as the buffer contains newlines (complete datagramm)
   while($buffer =~ '\*')
   {
     my $msg;
-    
+
     # extract the complete message ($msg), everything else is assigned to $buffer
     ($msg, $buffer) = split("\n", $buffer, 2);
-    
+    #($msg, $buffer) = split("DIM1*", $buffer, 2);
+
     # remove trailing whitespaces
-    chomp $msg;
+    chomp $msg; 
+    
+    if ($msg =~/14K(\d+)/) {
       
+      my $vol = ($1 / 10);
+
+      readingsSingleUpdate($hash, "volume", $vol, 1);
+      readingsSingleUpdate($hash, "mute", "off", 1);
+    }
     # parse the extracted message
     IOTAVX_Parse($hash, $msg);
   }
@@ -193,11 +201,11 @@ sub IOTAVX_Set($@)
        if ($mute eq "on") {		
 	    my $cmd = q('@11Q');
             DevIo_SimpleWrite($hash, $cmd, 2);
-	    readingsSingleUpdate($hash, "mute", "on", 1);
+	    #readingsSingleUpdate($hash, "mute", "on", 1);
        } else {
             my $cmd = q('@11R');
 	    DevIo_SimpleWrite($hash, $cmd, 2);
-	    readingsSingleUpdate($hash, "mute", "off", 1);
+	    #readingsSingleUpdate($hash, "mute", "off", 1);
        }	       
     }
     elsif ($what eq "input")
@@ -284,7 +292,10 @@ sub IOTAVX_Init($)
     my ($hash) = @_;
 
     # send a status request to the device
-    DevIo_SimpleWrite($hash, "get_status\r\n", 2);
+    #DevIo_SimpleWrite($hash, "get_status\r\n", 2);
+
+    my $cmd = q('@12S');
+    DevIo_SimpleWrite($hash, $cmd, 2);
 
     return undef; 
 }
@@ -294,11 +305,11 @@ sub IOTAVX_Parse (@)
 
   my ($hash, $msg) = @_;
   my $name = $hash->{NAME};
-
+ 
   if ($msg =~/DIM/) {
     readingsSingleUpdate($hash, "state", "on", 1);
   } 
-
+ 
 }
 
 1;
