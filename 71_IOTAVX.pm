@@ -129,7 +129,6 @@ sub IOTAVX_Read($)
 
     # extract the complete message ($msg), everything else is assigned to $buffer
     ($msg, $buffer) = split("\n", $buffer, 2);
-    #($msg, $buffer) = split("DIM1*", $buffer, 2);
 
     # remove trailing whitespaces
     chomp $msg; 
@@ -141,8 +140,14 @@ sub IOTAVX_Read($)
       readingsSingleUpdate($hash, "volume", $vol, 1);
       readingsSingleUpdate($hash, "mute", "off", 1);
     }
+    elsif ($msg =~/DIM1\*/) {
+       
+      readingsSingleUpdate($hash, "mute", "on", 1);
+    }
+
     # parse the extracted message
     IOTAVX_Parse($hash, $msg);
+    Log3 $name, 5, "$name - msg: $msg";
   }
   # update $hash->{PARTIAL} with the current buffer content
   $hash->{PARTIAL} = $buffer; 
