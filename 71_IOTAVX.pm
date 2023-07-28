@@ -11,7 +11,9 @@ use Time::HiRes qw(gettimeofday);
 
 my %commands = (
 	"mute:on" => "",
-	"mute:off" => ""
+	"mute:off" => "",
+	"power:on" => "",
+	"power:off" => ""
 );
 
 my %modes = (
@@ -81,8 +83,11 @@ sub IOTAVX_Define($$)
   #                 $attr{$name}{devStateIcon} = 'on:10px-kreis-gruen:disconnected disconnected:10px-kreis-rot:on';
   #          }
   unless (exists($attr{$name}{webCmd})){
-                  $attr{$name}{webCmd} = 'on:off:mute:volume:volumeUp:volumeDown:input:mode';
+                  $attr{$name}{webCmd} = 'on:off:power:mute:volume:volumeUp:volumeDown:input:mode';
           }
+  unless (exists($attr{$name}{stateFormat})){
+		$attr{$name}{stateFormat} = 'power';
+	}	 
 
   return undef;
 }
@@ -126,9 +131,10 @@ sub IOTAVX_Read($)
   while($buffer =~ '\*')
   {
     my $msg;
-
+    
     # extract the complete message ($msg), everything else is assigned to $buffer
     ($msg, $buffer) = split("\n", $buffer, 2);
+    #Log3 $name, 5, "$name - msg: $msg";
 
     # remove trailing whitespaces
     chomp $msg; 
@@ -140,8 +146,9 @@ sub IOTAVX_Read($)
       readingsSingleUpdate($hash, "volume", $vol, 1);
       readingsSingleUpdate($hash, "mute", "off", 1);
     }
-    elsif ($msg =~/DIM1\*/) {
-       
+    #elsif ($msg =~/DIM1\*/) {
+    elsif ($msg =~/DIM\*/) {
+  
       readingsSingleUpdate($hash, "mute", "on", 1);
     }
 
@@ -160,7 +167,7 @@ sub IOTAVX_Set($@)
 
     my $what = $a[1];
     
-    my $usage = "Unknown argument $what, choose one of on off mute:on,off volumeDown volumeUp volume:slider,0,5,80 " . 
+    my $usage = "Unknown argument $what, choose one of on off power:on,off mute:on,off volumeDown volumeUp volume:slider,0,5,80 " . 
     		"input:" . join(",", sort keys %inputs) . " " .
     		"mode:" . join(",", sort keys %modes) . " " .
     		"statusRequest"; 
@@ -173,12 +180,17 @@ sub IOTAVX_Set($@)
     elsif ($what eq "on")
     {
        my $cmd = q('@112');
+       $hash->{STATE} = $what;
        DevIo_SimpleWrite($hash, $cmd, 2);
+       readingsSingleUpdate($hash, "power", "on", 1);
+
     }
     elsif ($what eq "off")
     {
        my $cmd = q('@113');
+       $hash->{STATE} = $what;
        DevIo_SimpleWrite($hash, $cmd, 2);
+       readingsSingleUpdate($hash, "power", "off", 1);
     }
     elsif ($what eq "volumeDown")
     {
@@ -211,6 +223,20 @@ sub IOTAVX_Set($@)
             my $cmd = q('@11R');
 	    DevIo_SimpleWrite($hash, $cmd, 2);
 	    #readingsSingleUpdate($hash, "mute", "off", 1);
+       }	       
+    } 
+    elsif ($what eq "power")
+    {
+       my $power =$a[2];
+       
+       if ($power eq "on") {		
+	    my $cmd = q('@112');
+            DevIo_SimpleWrite($hash, $cmd, 2);
+	    readingsSingleUpdate($hash, "power", "on", 1);
+       } else {
+            my $cmd = q('@113');
+	    DevIo_SimpleWrite($hash, $cmd, 2);
+	    readingsSingleUpdate($hash, "power", "off", 1);
        }	       
     }
     elsif ($what eq "input")
